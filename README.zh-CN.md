@@ -16,8 +16,10 @@
   <a href="README.md">English</a> · <b>简体中文</b>
 </p>
 
-## 本 fork 的更新 (v0.2.0)
+## 本 fork 的更新 (v0.2.1)
 
+- **免费额度限流检测器** — 自动记录 429 响应，估算重置时间，显示倒计时
+- **持久化额度状态** — 通过 `~/.dsh/cache/opencode-zen-quota.json` 跨 DSH 重启保留
 - **8 个经核验的免费模型**（与 Zen 实时接口交叉验证，无无效条目）
 - **持久化文件缓存** — 重启 DSH 后目录不丢失
 - **指数退避重试** — 最多 2 次重试，间隔 500ms/1s
@@ -133,6 +135,7 @@ pnpm build      # 打包到 lib/
 | `src/adapter.ts` | `LlmAdapter` 实现：发请求、映射错误、暴露模型元数据 |
 | `src/stream.ts` | SSE 增量 → harness 块序列的状态机 |
 | `src/discovery.ts` | 免费目录的双源合并、缓存（内存+文件）、兜底和重试 |
+| `src/quota-tracker.ts` | 限流检测：记录 429，估算重置时间，持久化到磁盘 |
 | `src/fs-cache.ts` | 文件缓存辅助（浏览器环境无操作） |
 
 ## 相关

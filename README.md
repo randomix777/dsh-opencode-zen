@@ -16,8 +16,10 @@
   <b>English</b> · <a href="README.zh-CN.md">简体中文</a>
 </p>
 
-## What's new in this fork (v0.2.0)
+## What's new in this fork (v0.2.1)
 
+- **Free quota rate-limit tracker** — records 429s, estimates reset time, shows countdown
+- **Persistent quota state** — survives DSH restarts via `~/.dsh/cache/opencode-zen-quota.json`
 - **8 verified free models** (cross-checked against live Zen — no phantom entries)
 - **Persistent file cache** — catalog survives DSH restarts
 - **Retry with exponential backoff** — 2 retries, 500ms/1s delay
@@ -156,6 +158,7 @@ machine's toolchain and `allowBuilds` grants. Shipping the output removes that v
 | `src/adapter.ts` | `LlmAdapter` implementation: requests, error mapping, model metadata |
 | `src/stream.ts` | State machine turning SSE deltas into the harness block sequence |
 | `src/discovery.ts` | Two-source merge, caching (in-memory + file), fallback and retry for the free catalog |
+| `src/quota-tracker.ts` | Rate-limit detection: tracks 429s, estimates reset time, persists state to disk |
 | `src/fs-cache.ts` | File-based cache helpers (no-op on browsers) |
 
 ## Related
