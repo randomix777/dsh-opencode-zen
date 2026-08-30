@@ -7,17 +7,22 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/keman-ai/dsh-opencode-zen"><img src="https://img.shields.io/github/stars/keman-ai/dsh-opencode-zen?style=flat&label=Star&color=4D6BFE" alt="Stars"></a>
+  <a href="https://github.com/randomix777/dsh-opencode-zen"><img src="https://img.shields.io/github/stars/randomix777/dsh-opencode-zen?style=flat&label=Star&color=4D6BFE" alt="Stars"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2EA44F?style=flat" alt="MIT License"></a>
+  <a href="https://github.com/keman-ai/dsh-opencode-zen"><img src="https://img.shields.io/badge/forked%20from-keman--ai-blue" alt="Forked from"></a>
 </p>
 
 <p align="center">
   <b>English</b> · <a href="README.zh-CN.md">简体中文</a>
 </p>
 
-<p align="center">
-  <b>If this is useful to you, a Star goes a long way</b>
-</p>
+## What's new in this fork (v0.2.0)
+
+- **9 free models** (up from 7) — added MiniMax M1 Lite and MiniMax M1 Scan
+- **Persistent file cache** — catalog survives DSH restarts
+- **Retry with exponential backoff** — 2 retries, 500ms/1s delay
+- **Improved error messages** — clearer guidance on quota limits
+- **Updated config schema** — `cachePath` option for custom cache location
 
 Install it and configure nothing. Zen's free models accept anonymous calls, so once the
 plugin boots, a group of working models simply appears in the model picker.
@@ -30,23 +35,26 @@ Model picker
 ├─ deepseek-v4-flash-free        200K context, 128K output
 ├─ big-pickle                    Zen's own anonymous evaluation model
 ├─ mimo-v2.5-free                200K context
-└─ hy3-free                      190K context
+├─ hy3-free                      190K context
+├─ minimax-m1-lite-free          128K context
+└─ minimax-m1-scan-free          128K context, doc-focused
 ```
 
-All seven **support tool calls and reasoning content**, enough to run a full agent
+All **support tool calls and reasoning content**, enough to run a full agent
 loop — not a chat-only cut-down.
 
 The list is not hardcoded; it is fetched at runtime: models.dev decides *which are free
 and how large*, Zen's model endpoint decides *which still exist*, and the plugin takes
 the intersection. Free models are offered for a limited time, so any hardcoded list is
-guaranteed to go stale.
+guaranteed to go stale. The bundled snapshot is only a fallback for when both sources
+are unreachable.
 
 ## Install
 
 Not published to npm — install from GitHub:
 
 ```sh
-dsh plugin --profile web add -w github:keman-ai/dsh-opencode-zen
+dsh plugin --profile web add -w github:randomix777/dsh-opencode-zen
 ```
 
 Then **restart dsh once**, and the `opencode-zen` group appears in the model picker.
@@ -72,7 +80,7 @@ dsh --profile web --dump-config | grep -A 1 opencode-zen
 To hack on it, install locally:
 
 ```sh
-git clone https://github.com/keman-ai/dsh-opencode-zen
+git clone https://github.com/randomix777/dsh-opencode-zen
 cd dsh-opencode-zen && pnpm install && pnpm build
 dsh plugin --profile web add <absolute path to that directory>
 ```
@@ -109,7 +117,10 @@ plugins:
     catalogTimeoutMs: 8000             # catalog request timeout
     maxTokens: 32000                   # output cap; the model's own lower cap wins
     defaultContextWindow: 128000       # assumed when the catalog has no entry
+    cachePath: ~/.dsh/cache/opencode-zen-catalog.json  # persistent cache (default)
 ```
+
+Set `cachePath: ""` to disable file caching entirely.
 
 ## Known limits
 
@@ -117,7 +128,7 @@ plugins:
   Zen's policy; all the plugin can do is state the reason clearly.
 - **Reasoning is not sent back.** OpenAI-compatible `chat/completions` has no request
   field to carry the previous turn's thinking, so reasoning blocks are displayed, not replayed.
-- **Text only.** All seven models take text alone; an image in a tool result is replaced
+- **Text only.** All models take text alone; an image in a tool result is replaced
   with a one-line placeholder rather than dropped silently.
 - **Paid models are excluded.** Zen also offers Claude, GPT and others, but this plugin
   exists so that things run with zero configuration — mixing paid models into the same
@@ -143,18 +154,20 @@ machine's toolchain and `allowBuilds` grants. Shipping the output removes that v
 | `src/index.ts` | Plugin entry: config validation, credential resolution, provider registration on `ctx.llm` |
 | `src/adapter.ts` | `LlmAdapter` implementation: requests, error mapping, model metadata |
 | `src/stream.ts` | State machine turning SSE deltas into the harness block sequence |
-| `src/discovery.ts` | Two-source merge, caching and fallback for the free catalog |
+| `src/discovery.ts` | Two-source merge, caching (in-memory + file), fallback and retry for the free catalog |
+| `src/fs-cache.ts` | File-based cache helpers (no-op on browsers) |
 
 ## Related
 
 - [OpenCode Zen](https://opencode.ai/zen) — the model gateway itself; keys come from here
 - [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — the host
-- [dsh-skin-market](https://github.com/keman-ai/dsh-skin-market) — skin marketplace plugin by the same people
-- [dsh-skin-pack](https://github.com/keman-ai/dsh-skin-pack) — the official skins, all in one repository
+- [dsh-plugin-subscriptions](https://github.com/randomix777/dsh-plugin-subscriptions) — OAuth sign-in for subscription LLMs
+- [dsh-sprite-gen](https://github.com/randomix777/dsh-sprite-gen) — AI sprite generation plugin
+- Original: [keman-ai/dsh-opencode-zen](https://github.com/keman-ai/dsh-opencode-zen)
 
 ## License
 
-[MIT](LICENSE) © 2026 Science Roam Limited
+[MIT](LICENSE) © 2026 Science Roam Limited (fork & optimization by randomix777)
 
 ---
 

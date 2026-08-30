@@ -7,8 +7,8 @@
  * network is down or models.dev misbehaves, so an offline machine still sees a list
  * instead of nothing.
  *
- * Values copied from models.dev's `opencode` provider (verified 2026-08-18); all seven
- * models were `cost: 0` / `tool_call: true` / `reasoning: true` at the time.
+ * Values copied from models.dev's `opencode` provider (verified 2026-08-29); all models
+ * were `cost: 0` / `tool_call: true` / `reasoning: true` at the time.
  */
 
 /** A catalog entry: model id plus display and capacity info. */
@@ -25,7 +25,7 @@ export interface ZenModel {
   readonly maxOutputTokens: number
 }
 
-/** The seven free models as of 2026-08-18, largest context first. */
+/** The free models as of 2026-08-29, largest context first. */
 export const FALLBACK_MODELS: readonly ZenModel[] = [
   {
     id: 'nemotron-3-ultra-free',
@@ -75,6 +75,20 @@ export const FALLBACK_MODELS: readonly ZenModel[] = [
     description: '190K context, 64K output',
     contextWindow: 190_000,
     maxOutputTokens: 64_000,
+  },
+  {
+    id: 'minimax-m1-lite-free',
+    name: 'MiniMax M1 Lite (free)',
+    description: '128K context from MiniMax',
+    contextWindow: 128_000,
+    maxOutputTokens: 32_000,
+  },
+  {
+    id: 'minimax-m1-scan-free',
+    name: 'MiniMax M1 Scan (free)',
+    description: '128K context, document-focused',
+    contextWindow: 128_000,
+    maxOutputTokens: 16_000,
   },
 ]
 

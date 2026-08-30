@@ -18,6 +18,7 @@
 
 import { FALLBACK_MODELS } from './catalog.ts'
 import type { ZenModel } from './catalog.ts'
+import { writeTextFile, readTextFile, ensureDir } from './fs-cache.ts'
 
 /** Catalog source, surfaced in logs so it is clear whether the user saw live data. */
 export type CatalogSource = 'live' | 'cache' | 'fallback'
@@ -53,6 +54,8 @@ export interface DiscoveryOptions {
   readonly ttlMs: number
   /** Timeout for a single upstream request. */
   readonly timeoutMs: number
+  /** Optional cache file path for persistent storage across restarts. */
+  readonly cachePath?: string
 }
 
 interface CacheRow {
@@ -60,16 +63,30 @@ interface CacheRow {
   readonly models: readonly ZenModel[]
 }
 
+/** Maximum number of retry attempts for catalog fetches. */
+const MAX_RETRIES = 2
+/** Base delay in ms for exponential backoff. */
+const RETRY_BASE_DELAY_MS = 500
+
+/**
+ * Sleep for a given number of milliseconds.
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 /**
  * Catalog service: one per plugin instance.
  *
  * Fetch failures **never throw** — a missing catalog should cost the picker a few entries, not stop a conversation whose model is already chosen.
+ * Supports file-based persistence so the catalog survives DSH restarts.
  */
 export class Catalog {
   #cache: CacheRow | undefined
   /** In-flight fetch, for deduplication: opening the settings page asks several times at once. */
   #inflight: Promise<readonly ZenModel[]> | undefined
   #lastFailureAt = 0
+  #retryCount = 0
 
   readonly #options: DiscoveryOptions
   readonly #now: () => number
@@ -122,19 +139,54 @@ export class Catalog {
       return { models: cached?.models ?? FALLBACK_MODELS, source: cached === undefined ? 'fallback' : 'cache' }
     }
     this.#cache = { at: this.#now(), models }
+    this.#retryCount = 0
+    // Persist to disk so the catalog survives restarts.
+    await this.#persistCache(models)
     return { models, source: 'live' }
   }
 
   async #fetchAll(signal?: AbortSignal): Promise<readonly ZenModel[]> {
-    const [dev, live] = await Promise.all([
-      this.#json<DevApi>(this.#options.catalogUrl, signal),
-      this.#json<ZenModelList>(this.#options.modelsUrl, signal),
-    ])
-    if (dev === undefined) {
-      return []
+    let lastError: unknown
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const [dev, live] = await Promise.all([
+          this.#json<DevApi>(this.#options.catalogUrl, signal),
+          this.#json<ZenModelList>(this.#options.modelsUrl, signal),
+        ])
+        if (dev === undefined) {
+          lastError = new Error('models.dev returned no data')
+          throw lastError
+        }
+        const available = liveIds(live)
+        const models = freeModels(dev, available)
+        if (models.length > 0) {
+          return models
+        }
+        lastError = new Error('models.dev returned no free models')
+        throw lastError
+      } catch (err) {
+        lastError = err
+        if (attempt < MAX_RETRIES) {
+          const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
+          await sleep(delay)
+        }
+      }
     }
-    const available = liveIds(live)
-    return freeModels(dev, available)
+    // Log the failure for debugging but don't surface it to the user.
+    console.warn('[opencode-zen] catalog fetch failed after', MAX_RETRIES + 1, 'attempts:', lastError)
+    return []
+  }
+
+  async #persistCache(models: readonly ZenModel[]): Promise<void> {
+    const cachePath = this.#options.cachePath
+    if (!cachePath) return
+    try {
+      const key = `opencode-zen-catalog`
+      const data = JSON.stringify({ models, fetchedAt: this.#now() })
+      await writeTextFile(cachePath, data)
+    } catch {
+      // File cache is best-effort; don't fail the catalog load.
+    }
   }
 
   async #json<T>(url: string, signal?: AbortSignal): Promise<T | undefined> {

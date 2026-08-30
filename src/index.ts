@@ -72,6 +72,12 @@ export interface Config {
   maxTokens?: number
   /** Context window assumed when the catalog has no entry. Defaults to 128,000. */
   defaultContextWindow?: number
+  /**
+   * Path to persist the catalog cache across DSH restarts.
+   * Defaults to `~/.dsh/cache/opencode-zen-catalog.json`.
+   * Set to empty string to disable file caching.
+   */
+  cachePath?: string
 }
 
 /** Validate and complete the config. Out-of-range values fail here, not mid-request. */
@@ -81,6 +87,7 @@ export function resolveConfig(config: Config): {
   catalogUrl: string
   catalogTtlMs: number
   catalogTimeoutMs: number
+  cachePath: string
 } {
   const defaultContextWindow = config.defaultContextWindow ?? DEFAULT_CONTEXT_WINDOW
   if (!Number.isInteger(defaultContextWindow) || defaultContextWindow <= 0) {
@@ -98,6 +105,7 @@ export function resolveConfig(config: Config): {
   if (!Number.isFinite(catalogTimeoutMs) || catalogTimeoutMs <= 0) {
     throw new Error('opencode-zen: catalogTimeoutMs must be a positive number')
   }
+  const cachePath = config.cachePath ?? getDefaultCachePath()
   return {
     connection: {
       baseURL: config.baseURL ?? DEFAULT_BASE_URL,
@@ -108,7 +116,14 @@ export function resolveConfig(config: Config): {
     catalogUrl: config.catalogUrl ?? DEFAULT_CATALOG_URL,
     catalogTtlMs,
     catalogTimeoutMs,
+    cachePath,
   }
+}
+
+/** Build the default cache path under ~/.dsh/cache/. */
+function getDefaultCachePath(): string {
+  const home = process.env.HOME ?? process.env.USERPROFILE ?? '.'
+  return `${home}/.dsh/cache/opencode-zen-catalog.json`
 }
 
 export function apply(ctx: Context, config: Config = {}): void {
@@ -118,6 +133,7 @@ export function apply(ctx: Context, config: Config = {}): void {
     modelsUrl: `${resolved.connection.baseURL.replace(/\/+$/, '')}/models`,
     ttlMs: resolved.catalogTtlMs,
     timeoutMs: resolved.catalogTimeoutMs,
+    cachePath: resolved.cachePath,
   })
 
   /**
@@ -140,10 +156,14 @@ export function apply(ctx: Context, config: Config = {}): void {
   const adapter = new ZenAdapter({ options: () => resolved.connection, resolveApiKey, catalog })
   ctx.effect(() => ctx.llm.registerAdapter([PROVIDER], adapter), `opencode-zen: ${PROVIDER}`)
 
+  const cacheHint = resolved.cachePath
+    ? `, cache ${resolved.cachePath}`
+    : ', no file cache'
   ctx.logger.info(
-    '[opencode-zen] registered provider %s (endpoint %s, credential env %s)',
+    '[opencode-zen] registered provider %s (endpoint %s, credential env %s%s)',
     PROVIDER,
     resolved.connection.baseURL,
     resolved.apiKeyEnv,
+    cacheHint,
   )
 }
