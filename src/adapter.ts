@@ -22,6 +22,8 @@ import type { Catalog } from './discovery.ts'
 import { toWireMessages, toWireTools } from './translate.ts'
 import { consume } from './stream.ts'
 import type { WireError, WireRequest } from './wire.ts'
+import { QuotaTracker } from './quota-tracker.ts'
+export type { QuotaInfo } from './quota-tracker.ts'
 
 /** Connection facts held by this adapter, read per request so config changes need no restart. */
 export interface ZenConnection {
@@ -45,18 +47,22 @@ export interface ZenAdapterOptions {
   readonly resolveApiKey: () => Promise<string | undefined>
   /** Free-model catalog, fetched live with caching and a snapshot fallback. */
   readonly catalog: Catalog
+  /** Optional quota tracker; if provided, 429s are recorded and a reset countdown is available. */
+  readonly quotaTracker?: QuotaTracker
 }
 
 export class ZenAdapter extends LlmAdapter {
   readonly #options: ZenAdapterOptions['options']
   readonly #resolveApiKey: ZenAdapterOptions['resolveApiKey']
   readonly #catalog: Catalog
+  readonly #quota: ZenAdapterOptions['quotaTracker']
 
   constructor(options: ZenAdapterOptions) {
     super()
     this.#options = options.options
     this.#resolveApiKey = options.resolveApiKey
     this.#catalog = options.catalog
+    this.#quota = options.quotaTracker
   }
 
   override providerInfo(provider: string): LlmProviderInfo {
@@ -147,13 +153,26 @@ export class ZenAdapter extends LlmAdapter {
     })
 
     if (!response.ok) {
-      throw await describeFailure(response, apiKey !== undefined)
+      const err = await describeFailure(response, apiKey !== undefined)
+      // Record rate limits for quota tracking
+      if (response.status === 429 && this.#quota) {
+        const kind = err.kind === 'RATE_LIMIT' ? 'rate-limit'
+          : err.kind === 'PROVIDER_ERROR' ? 'model-unavailable'
+          : 'quota-exhausted'
+        this.#quota.recordRateLimit(kind)
+      }
+      throw err
     }
     if (response.body === null) {
       throw new LlmError('opencode-zen: provider returned no response body', 'PROVIDER_ERROR')
     }
 
     yield* consume(response.body)
+  }
+
+  /** Returns current quota status if a tracker is configured; undefined otherwise. */
+  getQuotaStatus() {
+    return this.#quota?.getStatus()
   }
 }
 

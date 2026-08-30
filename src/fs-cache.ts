@@ -1,11 +1,11 @@
 /**
- * File-based cache helpers for the catalog.
+ * File-based cache helpers for the catalog and quota tracker.
  *
  * Uses Node's built-in fs module. On browsers (dsh web) these are no-ops — callers
  * check cachePath before invoking anything here.
  */
 
-import { mkdir, writeFile, readFile } from 'node:fs/promises'
+import { mkdir, writeFile, readFile, promises as fs } from 'node:fs'
 import { dirname } from 'node:path'
 
 /**
@@ -34,3 +34,17 @@ export async function readTextFile(path: string): Promise<string | undefined> {
     return undefined
   }
 }
+
+/**
+ * Synchronous read for use during synchronous initialization.
+ * Returns undefined on any failure.
+ */
+export function readTextFileSync(path: string): string | undefined {
+  try {
+    const { readFileSync } = require('node:fs') as typeof import('node:fs')
+    return readFileSync(path, 'utf8') as string
+  } catch {
+    return undefined
+  }
+}
+

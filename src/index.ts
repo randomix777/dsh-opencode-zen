@@ -17,6 +17,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { ZenAdapter } from './adapter.ts'
 import type { ZenConnection } from './adapter.ts'
 import { Catalog } from './discovery.ts'
+import { QuotaTracker } from './quota-tracker.ts'
 
 export { ZenAdapter } from './adapter.ts'
 export type { ZenAdapterOptions, ZenConnection } from './adapter.ts'
@@ -24,6 +25,8 @@ export { Catalog, freeModels } from './discovery.ts'
 export type { CatalogResult, CatalogSource, DiscoveryOptions } from './discovery.ts'
 export { FALLBACK_MODELS, findModel } from './catalog.ts'
 export type { ZenModel } from './catalog.ts'
+export { QuotaTracker } from './quota-tracker.ts'
+export type { QuotaInfo } from './quota-tracker.ts'
 
 /** Plugin name (the `name` of the loader entry). */
 export const name = 'opencode-zen'
@@ -126,6 +129,13 @@ function getDefaultCachePath(): string {
   return `${home}/.dsh/cache/opencode-zen-catalog.json`
 }
 
+/**
+ * Path for the quota tracker cache file, alongside the catalog cache.
+ */
+function getQuotaCachePath(cachePath: string): string {
+  return cachePath.replace(/\.json$/, '-quota.json')
+}
+
 export function apply(ctx: Context, config: Config = {}): void {
   const resolved = resolveConfig(config)
   const catalog = new Catalog({
@@ -134,6 +144,10 @@ export function apply(ctx: Context, config: Config = {}): void {
     ttlMs: resolved.catalogTtlMs,
     timeoutMs: resolved.catalogTimeoutMs,
     cachePath: resolved.cachePath,
+  })
+
+  const quotaTracker = new QuotaTracker({
+    cachePath: getQuotaCachePath(resolved.cachePath),
   })
 
   /**
@@ -153,17 +167,21 @@ export function apply(ctx: Context, config: Config = {}): void {
     return ambient !== undefined && ambient.length > 0 ? ambient : undefined
   }
 
-  const adapter = new ZenAdapter({ options: () => resolved.connection, resolveApiKey, catalog })
+  const adapter = new ZenAdapter({
+    options: () => resolved.connection,
+    resolveApiKey,
+    catalog,
+    quotaTracker,
+  })
   ctx.effect(() => ctx.llm.registerAdapter([PROVIDER], adapter), `opencode-zen: ${PROVIDER}`)
 
-  const cacheHint = resolved.cachePath
-    ? `, cache ${resolved.cachePath}`
-    : ', no file cache'
+  const quotaHint = resolved.cachePath ? ', quota tracking' : ''
   ctx.logger.info(
-    '[opencode-zen] registered provider %s (endpoint %s, credential env %s%s)',
+    '[opencode-zen] registered provider %s (endpoint %s, credential env %s%s%s)',
     PROVIDER,
     resolved.connection.baseURL,
     resolved.apiKeyEnv,
-    cacheHint,
+    quotaHint,
+    resolved.cachePath ? '' : ', no file cache',
   )
 }
