@@ -9,10 +9,10 @@
       "platform": "web"
     },
     "id": "opencode-zen",
-    "changelog": {
-      "0.1.0": "Initial release: 7 free models from OpenCode Zen, zero config",
-      "0.2.0": "Add MiniMax M1 Lite/Scan models to fallback; persistent file cache; retry with exponential backoff; improved error messages"
-    }
+      "changelog": {
+        "0.1.0": "Initial release: 7 free models from OpenCode Zen, zero config",
+        "0.2.0": "Add Muse Spark 1.2 Contributor and Ling 3.0 Flash Fin; remove models not on Zen (hy3, minimax-m1); persistent file cache; retry with exponential backoff; improved error messages"
+      }
   },
   "description": "DSH plugin: brings OpenCode Zen's free models to DeepSeek Harness — zero config, no API key required, 9 free models with tool calls and reasoning support",
   "scripts": {

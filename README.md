@@ -18,11 +18,13 @@
 
 ## What's new in this fork (v0.2.0)
 
-- **9 free models** (up from 7) — added MiniMax M1 Lite and MiniMax M1 Scan
+- **8 verified free models** (cross-checked against live Zen — no phantom entries)
 - **Persistent file cache** — catalog survives DSH restarts
 - **Retry with exponential backoff** — 2 retries, 500ms/1s delay
 - **Improved error messages** — clearer guidance on quota limits
 - **Updated config schema** — `cachePath` option for custom cache location
+
+All models are verified to exist on both models.dev (cost=0) **and** Zen's `/v1/models` endpoint.
 
 Install it and configure nothing. Zen's free models accept anonymous calls, so once the
 plugin boots, a group of working models simply appears in the model picker.
@@ -30,14 +32,13 @@ plugin boots, a group of working models simply appears in the model picker.
 ```
 Model picker
 ├─ nemotron-3-ultra-free         1M context
+├─ muse-spark-1.2-contributor-free 1M context
 ├─ nemotron-3.5-lightning-free   256K context, 256K output too
+├─ ling-3.0-flash-fin-free       256K context
 ├─ laguna-s-2.1-free             256K context
 ├─ deepseek-v4-flash-free        200K context, 128K output
 ├─ big-pickle                    Zen's own anonymous evaluation model
-├─ mimo-v2.5-free                200K context
-├─ hy3-free                      190K context
-├─ minimax-m1-lite-free          128K context
-└─ minimax-m1-scan-free          128K context, doc-focused
+└─ mimo-v2.5-free                200K context
 ```
 
 All **support tool calls and reasoning content**, enough to run a full agent

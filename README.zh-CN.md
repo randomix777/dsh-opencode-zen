@@ -18,25 +18,26 @@
 
 ## 本 fork 的更新 (v0.2.0)
 
-- **9 个免费模型**（原来 7 个）— 新增 MiniMax M1 Lite 和 MiniMax M1 Scan
+- **8 个经核验的免费模型**（与 Zen 实时接口交叉验证，无无效条目）
 - **持久化文件缓存** — 重启 DSH 后目录不丢失
 - **指数退避重试** — 最多 2 次重试，间隔 500ms/1s
 - **改进的错误提示** — 更清晰的额度限制说明
 - **更新的配置架构** — 新增 `cachePath` 选项
+
+所有模型均经过 models.dev（cost=0）和 Zen `/v1/models` 接口双重验证。
 
 装上不用配任何东西。Zen 的免费模型允许匿名调用，插件启动后模型选择器里直接多出一组能用的模型。
 
 ```
 模型选择器
 ├─ nemotron-3-ultra-free         100 万上下文
+├─ muse-spark-1.2-contributor-free 100 万上下文
 ├─ nemotron-3.5-lightning-free   26 万上下文，输出也是 26 万
+├─ ling-3.0-flash-fin-free       26 万上下文
 ├─ laguna-s-2.1-free             25.6 万上下文
 ├─ deepseek-v4-flash-free        20 万上下文，12.8 万输出
 ├─ big-pickle                    Zen 自家的匿名评测模型
-├─ mimo-v2.5-free                20 万上下文
-├─ hy3-free                      19 万上下文
-├─ minimax-m1-lite-free          12.8 万上下文
-└─ minimax-m1-scan-free          12.8 万上下文，文档专用
+└─ mimo-v2.5-free                20 万上下文
 ```
 
 **全部支持工具调用和推理内容**，够跑完整的 agent 循环——不是只能聊天的阉割版。

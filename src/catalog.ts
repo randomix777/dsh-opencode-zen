@@ -7,8 +7,8 @@
  * network is down or models.dev misbehaves, so an offline machine still sees a list
  * instead of nothing.
  *
- * Values copied from models.dev's `opencode` provider (verified 2026-08-29); all models
- * were `cost: 0` / `tool_call: true` / `reasoning: true` at the time.
+ * Values verified against live Zen `/v1/models` and models.dev as of 2026-08-30.
+ * Only models confirmed present on BOTH sources are included.
  */
 
 /** A catalog entry: model id plus display and capacity info. */
@@ -25,7 +25,13 @@ export interface ZenModel {
   readonly maxOutputTokens: number
 }
 
-/** The free models as of 2026-08-29, largest context first. */
+/**
+ * Free models confirmed available on both models.dev (cost=0) and Zen /v1/models.
+ * Sorted by context window descending. Updated 2026-08-30.
+ *
+ * Note: Zen's free model roster is time-limited. When the live catalog is reachable,
+ * this snapshot is only a fallback — always prefer `discovery.ts` results.
+ */
 export const FALLBACK_MODELS: readonly ZenModel[] = [
   {
     id: 'nemotron-3-ultra-free',
@@ -70,25 +76,18 @@ export const FALLBACK_MODELS: readonly ZenModel[] = [
     maxOutputTokens: 32_000,
   },
   {
-    id: 'hy3-free',
-    name: 'HY3 (free)',
-    description: '190K context, 64K output',
-    contextWindow: 190_000,
-    maxOutputTokens: 64_000,
+    id: 'muse-spark-1.2-contributor-free',
+    name: 'Muse Spark 1.2 Contributor (free)',
+    description: '1M context — contributor-tier access, great for long documents',
+    contextWindow: 1_048_576,
+    maxOutputTokens: 131_072,
   },
   {
-    id: 'minimax-m1-lite-free',
-    name: 'MiniMax M1 Lite (free)',
-    description: '128K context from MiniMax',
-    contextWindow: 128_000,
-    maxOutputTokens: 32_000,
-  },
-  {
-    id: 'minimax-m1-scan-free',
-    name: 'MiniMax M1 Scan (free)',
-    description: '128K context, document-focused',
-    contextWindow: 128_000,
-    maxOutputTokens: 16_000,
+    id: 'ling-3.0-flash-fin-free',
+    name: 'Ling 3.0 Flash Fin (free)',
+    description: '262K context, financial-specialized variant',
+    contextWindow: 262_144,
+    maxOutputTokens: 32_768,
   },
 ]
 
