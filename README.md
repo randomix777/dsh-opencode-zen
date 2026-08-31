@@ -165,7 +165,7 @@ machine's toolchain and `allowBuilds` grants. Shipping the output removes that v
 
 - [OpenCode Zen](https://opencode.ai/zen) — the model gateway itself; keys come from here
 - [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — the host
-- [dsh-plugin-subscriptions](https://github.com/randomix777/dsh-plugin-subscriptions) — OAuth sign-in for subscription LLMs
+- [dsh-plugin-subs](https://github.com/randomix777/dsh-plugin-subs) — OAuth sign-in for subscription LLMs
 - [dsh-sprite-gen](https://github.com/randomix777/dsh-sprite-gen) — AI sprite generation plugin
 - Original: [keman-ai/dsh-opencode-zen](https://github.com/keman-ai/dsh-opencode-zen)
 
