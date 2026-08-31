@@ -142,7 +142,7 @@ pnpm build      # 打包到 lib/
 
 - [OpenCode Zen](https://opencode.ai/zen) —— 模型网关本体，key 在这里取
 - [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) —— 宿主
-- [dsh-plugin-subscriptions](https://github.com/randomix777/dsh-plugin-subscriptions) —— OAuth 订阅 LLM 插件
+- [dsh-plugin-subs](https://github.com/randomix777/dsh-plugin-subs) —— OAuth 订阅 LLM 插件
 - [dsh-sprite-gen](https://github.com/randomix777/dsh-sprite-gen) —— AI 精灵图生成插件
 - 原版: [keman-ai/dsh-opencode-zen](https://github.com/keman-ai/dsh-opencode-zen)
 
