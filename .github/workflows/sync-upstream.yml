@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main with full history
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: main
           fetch-depth: 0
@@ -31,7 +31,7 @@ jobs:
       - name: Merge upstream/main
         id: merge
         env:
-          UPSTREAM_REPO: kemand-ai/dsh-opencode-zen
+          UPSTREAM_REPO: keman-ai/dsh-opencode-zen
         run: |
           set -euo pipefail
 
@@ -81,7 +81,7 @@ jobs:
         if: steps.changed.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          UPSTREAM_REPO: kemand-ai/dsh-opencode-zen
+          UPSTREAM_REPO: keman-ai/dsh-opencode-zen
           UP_SHA: ${{ steps.merge.outputs.up_sha }}
           STATE: ${{ steps.merge.outputs.state }}
         run: |
