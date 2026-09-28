@@ -47,8 +47,11 @@ jobs:
 
           # sync/upstream 是本工作流独占的机器人分支，每次运行整体重写
           git checkout -B sync/upstream
+          printf 'temp marker' > TEMP_SYNC_TEST.md
+          git add TEMP_SYNC_TEST.md
+          git commit -q -m 'TEMP: verify push+PR path'
 
-          if git merge --no-ff --no-edit "upstream/main~1"; then   # TEMP-TEST
+          if git merge --no-ff --no-edit "upstream/main"; then
             echo "state=clean" >> "$GITHUB_OUTPUT"
             echo "::notice::已干净合并 upstream/main"
           else
