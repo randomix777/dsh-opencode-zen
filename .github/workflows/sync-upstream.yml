@@ -2,6 +2,16 @@ name: Sync upstream
 
 # 每天自动把上游 keman-ai/dsh-opencode-zen 的最新提交合并进来，并开一个 PR 等你审阅。
 # 永远不会自动合并到 main —— 冲突时也会开 PR，由你在 GitHub 界面里解决。
+#
+# ⚠️ 必须先配置仓库 secret SYNC_TOKEN，否则最后一步建 PR 会失败（403）。
+#    原因：本仓库是 fork，GitHub 明确禁止 Actions 在 fork 里创建 PR
+#    （"GitHub Actions is not permitted to create or approve pull requests"）。
+#    推分支不受影响，用内置 GITHUB_TOKEN 即可，只有建 PR 需要 PAT。
+#
+#    配置方法：Settings → Secrets and variables → Actions → New repository secret
+#    名称 SYNC_TOKEN，值填一个 fine-grained PAT，权限只要给这一个仓库：
+#      Contents: Read and write
+#      Pull requests: Read and write
 on:
   schedule:
     # 03:17 UTC（北京时间 11:17）。刻意避开整点，减少 GitHub 调度拥塞导致的延迟。
@@ -10,7 +20,6 @@ on:
 
 permissions:
   contents: write   # 推送 sync/upstream 分支
-  pull-requests: write
 
 # 同一次同步不要并发跑，避免两个 job 抢着推同一个分支
 concurrency:
@@ -43,13 +52,10 @@ jobs:
 
           UP_SHA="$(git rev-parse upstream/main)"
           echo "up_sha=${UP_SHA}" >> "$GITHUB_OUTPUT"
-          echo "upstream 已到 ${UP_SHA}"
+          echo "上游已到 ${UP_SHA}"
 
           # sync/upstream 是本工作流独占的机器人分支，每次运行整体重写
           git checkout -B sync/upstream
-          printf 'temp marker' > TEMP_SYNC_TEST.md
-          git add TEMP_SYNC_TEST.md
-          git commit -q -m 'TEMP: verify push+PR path'
 
           if git merge --no-ff --no-edit "upstream/main"; then
             echo "state=clean" >> "$GITHUB_OUTPUT"
@@ -83,12 +89,17 @@ jobs:
       - name: Open or update PR
         if: steps.changed.outputs.changed == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN }}
           UPSTREAM_REPO: keman-ai/dsh-opencode-zen
           UP_SHA: ${{ steps.merge.outputs.up_sha }}
           STATE: ${{ steps.merge.outputs.state }}
         run: |
           set -euo pipefail
+
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::未配置 SYNC_TOKEN。fork 仓库里 Actions 无权创建 PR，请先加一个 fine-grained PAT 作为仓库 secret。"
+            exit 1
+          fi
 
           if [ "$STATE" = "conflict" ]; then
             TITLE="⚠️ [自动同步] 上游更新存在冲突，需要手动解决"
@@ -119,8 +130,7 @@ jobs:
             echo "</details>"
           } > pr-body.md
 
-          # fork 里的 GITHUB_TOKEN 走 GraphQL 的 createPullRequest 会被拒
-          # （Resource not accessible by integration），这里改用 REST API。
+          # 用 REST 而不是 gh pr create：后者走 GraphQL 的 createPullRequest
           EXISTING="$(gh pr view sync/upstream --json number --jq .number 2>/dev/null || true)"
 
           if [ -n "$EXISTING" ]; then
