@@ -1,4 +1,4 @@
-﻿name: Sync upstream
+name: Sync upstream
 
 # 每天自动把上游 keman-ai/dsh-opencode-zen 的最新提交合并进来，并开一个 PR 等你审阅。
 # 永远不会自动合并到 main —— 冲突时也会开 PR，由你在 GitHub 界面里解决。
@@ -119,13 +119,16 @@ jobs:
             echo "</details>"
           } > pr-body.md
 
-          if gh pr view sync/upstream --json number > /dev/null 2>&1; then
-            echo "PR 已存在，更新中…"
-            gh pr edit sync/upstream --title "$TITLE" --body-file pr-body.md
+          # fork 里的 GITHUB_TOKEN 走 GraphQL 的 createPullRequest 会被拒
+          # （Resource not accessible by integration），这里改用 REST API。
+          EXISTING="$(gh pr view sync/upstream --json number --jq .number 2>/dev/null || true)"
+
+          if [ -n "$EXISTING" ]; then
+            echo "PR #$EXISTING 已存在，更新中…"
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/pulls/${EXISTING}" \
+              -f title="$TITLE" -F body=@pr-body.md --jq '.html_url'
           else
-            gh pr create \
-              --base main \
-              --head sync/upstream \
-              --title "$TITLE" \
-              --body-file pr-body.md
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/pulls" \
+              -f title="$TITLE" -f head="sync/upstream" -f base="main" \
+              -F body=@pr-body.md --jq '.html_url'
           fi
