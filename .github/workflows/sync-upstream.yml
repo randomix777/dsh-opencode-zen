@@ -1,4 +1,4 @@
-name: Sync upstream
+﻿name: Sync upstream
 
 # 每天自动把上游 keman-ai/dsh-opencode-zen 的最新提交合并进来，并开一个 PR 等你审阅。
 # 永远不会自动合并到 main —— 冲突时也会开 PR，由你在 GitHub 界面里解决。
@@ -48,7 +48,7 @@ jobs:
           # sync/upstream 是本工作流独占的机器人分支，每次运行整体重写
           git checkout -B sync/upstream
 
-          if git merge --no-ff --no-edit "upstream/main"; then
+          if git merge --no-ff --no-edit "upstream/main~1"  # TEMP-TEST; then
             echo "state=clean" >> "$GITHUB_OUTPUT"
             echo "::notice::已干净合并 upstream/main"
           else
