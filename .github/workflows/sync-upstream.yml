@@ -1,0 +1,128 @@
+name: Sync upstream
+
+# 每天自动把上游 keman-ai/dsh-opencode-zen 的最新提交合并进来，并开一个 PR 等你审阅。
+# 永远不会自动合并到 main —— 冲突时也会开 PR，由你在 GitHub 界面里解决。
+on:
+  schedule:
+    # 03:17 UTC（北京时间 11:17）。刻意避开整点，减少 GitHub 调度拥塞导致的延迟。
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # 推送 sync/upstream 分支
+  pull-requests: write
+
+# 同一次同步不要并发跑，避免两个 job 抢着推同一个分支
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Merge upstream and open PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main with full history
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Merge upstream/main
+        id: merge
+        env:
+          UPSTREAM_REPO: kemand-ai/dsh-opencode-zen
+        run: |
+          set -euo pipefail
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git"
+          git fetch --no-tags upstream main
+
+          UP_SHA="$(git rev-parse upstream/main)"
+          echo "up_sha=${UP_SHA}" >> "$GITHUB_OUTPUT"
+          echo "upstream 已到 ${UP_SHA}"
+
+          # sync/upstream 是本工作流独占的机器人分支，每次运行整体重写
+          git checkout -B sync/upstream
+
+          if git merge --no-ff --no-edit "upstream/main"; then
+            echo "state=clean" >> "$GITHUB_OUTPUT"
+            echo "::notice::已干净合并 upstream/main"
+          else
+            # 放弃这次合并，但仍推分支 + 开 PR，让你在 GitHub 的冲突解决界面里处理
+            git merge --abort || true
+            echo "state=conflict" >> "$GITHUB_OUTPUT"
+            echo "::error::与 upstream/main 存在冲突，请在打开的 PR 里用冲突解决界面处理"
+          fi
+
+      - name: Check whether anything actually changed
+        id: changed
+        run: |
+          set -euo pipefail
+          if git diff --quiet main sync/upstream; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "上游没有新提交，无需同步。"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git log --oneline main..sync/upstream
+          fi
+
+      - name: Push sync branch
+        if: steps.changed.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          # 这个分支只有本工作流会写，强制推送是安全的；其他分支一律不动
+          git push --force origin sync/upstream
+
+      - name: Open or update PR
+        if: steps.changed.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPSTREAM_REPO: kemand-ai/dsh-opencode-zen
+          UP_SHA: ${{ steps.merge.outputs.up_sha }}
+          STATE: ${{ steps.merge.outputs.state }}
+        run: |
+          set -euo pipefail
+
+          if [ "$STATE" = "conflict" ]; then
+            TITLE="⚠️ [自动同步] 上游更新存在冲突，需要手动解决"
+            NOTE="> [!WARNING]
+          > 本次同步与上游产生了冲突，分支停在合并前的状态。
+          > 请点开本 PR 的 **Files changed** 页面，用 GitHub 的冲突解决界面处理，
+          > 解决后合并即可。"
+          else
+            TITLE="🔄 [自动同步] 合并上游 ${UPSTREAM_REPO}@main"
+            NOTE="自动合并，无冲突。"
+          fi
+
+          {
+            echo "${NOTE}"
+            echo
+            echo "上游仓库：[${UPSTREAM_REPO}](https://github.com/${UPSTREAM_REPO})"
+            echo
+            echo "- 上游提交：[\`${UP_SHA}\`](https://github.com/${UPSTREAM_REPO}/commit/${UP_SHA})"
+            echo "- 同步时间：$(date -u '+%Y-%m-%d %H:%M UTC')"
+            echo "- 触发方式：${{ github.event_name }}"
+            echo
+            echo "<details><summary>合并前请自行验证</summary>"
+            echo
+            echo '```sh'
+            echo "npm ci && npm test"
+            echo '```'
+            echo
+            echo "</details>"
+          } > pr-body.md
+
+          if gh pr view sync/upstream --json number > /dev/null 2>&1; then
+            echo "PR 已存在，更新中…"
+            gh pr edit sync/upstream --title "$TITLE" --body-file pr-body.md
+          else
+            gh pr create \
+              --base main \
+              --head sync/upstream \
+              --title "$TITLE" \
+              --body-file pr-body.md
+          fi
